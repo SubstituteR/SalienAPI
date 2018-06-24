@@ -116,6 +116,13 @@ namespace Saliens
             return JsonConvert.DeserializeObject<Response<T>>(JSON).Data;
         }
 
+
+        [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, Inherited = false)]
+        internal class PopulateSetting : Attribute
+        {
+            public bool Skip { get; set; }
+        }
+
         /// <summary>
         /// Copies JSON only values from B onto A.
         /// </summary>
@@ -130,10 +137,14 @@ namespace Saliens
 
             foreach (PropertyInfo Property in B.GetType().GetProperties())
             {
-                if (Property.GetCustomAttribute<JsonPropertyAttribute>() != null)
+                if (Property.GetCustomAttribute<PopulateSetting>() != null && Property.GetCustomAttribute<PopulateSetting>().Skip == false)
                 {
-                    Property.SetValue(A, Property.GetValue(B));
+                    if (Property.GetValue(A) != Property.GetValue(B) && Property.GetValue(B) != null)
+                    {
+                        Property.SetValue(A, Property.GetValue(B));
+                    }
                 }
+                    
             }
         }
     }

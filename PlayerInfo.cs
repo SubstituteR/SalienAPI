@@ -36,6 +36,7 @@ namespace Saliens
         public Zone Zone { get; set; }
 
         [JsonIgnore]
+        [Network.PopulateSetting(Skip = true)]
         private string Token { get; set; }
 
 
