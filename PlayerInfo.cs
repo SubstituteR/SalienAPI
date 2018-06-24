@@ -30,13 +30,12 @@ namespace Saliens
         public int NextLevelScore { get; private set; }
 
         [JsonIgnore]
-        public Planet Planet { get; set; }
+        public Planet Planet => Planet.Get(ActivePlanetID);
 
         [JsonIgnore]
-        public Zone Zone { get; set; }
+        public Zone Zone => Planet.Zones[ActiveZonePosition];
 
         [JsonIgnore]
-        [Network.PopulateSetting(Skip = true)]
         private string Token { get; set; }
 
 
@@ -93,7 +92,6 @@ namespace Saliens
         /// </summary>
         public void Update()
         {
-            Console.WriteLine("Updated PlayerInfo");
             Network.PopulateObject(this, Get(Token));
         }
 
@@ -157,16 +155,6 @@ namespace Saliens
             string JSON = Network.Post("GetPlayerInfo", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token).GetAwaiter().GetResult();
             PlayerInfo player = Network.Deserialize<PlayerInfo>(JSON);
             player.Token = Token;
-            if (player.ActivePlanetID != 0)
-            {
-                player.Planet = Planet.Get(player.ActivePlanetID);
-                if (player.ActiveZoneID != 0)
-                {
-                    player.Zone = player.Planet.GetZoneFromID(player.ActiveZoneID);
-                }
-            }
-           
-            
             return player;
         }
 

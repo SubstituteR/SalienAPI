@@ -21,7 +21,7 @@ namespace Saliens
 
     public class Network
     {
-        private static HttpClient client = new HttpClient();
+        private static HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(10)};
 
         /// <summary>
         /// Which API Endpoint to use.
@@ -60,7 +60,8 @@ namespace Saliens
             Int32.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value.FirstOrDefault(), out int EResult);
             if (EResult != 1)
             {
-                throw new InvalidGameResponse();
+                Console.WriteLine("ERR" + EResult);
+                throw new InvalidGameResponse(EResult);
             }
 
             return await Response.Content.ReadAsStringAsync();
@@ -128,7 +129,7 @@ namespace Saliens
         [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, Inherited = false)]
         internal class PopulateSetting : Attribute
         {
-            public bool Skip { get; set; }
+            public bool Skip { get; set; } = true;
         }
 
         /// <summary>
@@ -138,16 +139,31 @@ namespace Saliens
         /// <param name="B">Object to copy from.</param>
         public static void PopulateObject(object A, object B)
         {
+            Console.WriteLine("POPULATE CALLED");
             if (A.GetType() != B.GetType())
             {
+                Console.WriteLine("A != B");
                 return;
             }
 
             foreach (PropertyInfo Property in B.GetType().GetProperties())
             {
-                if (Property.GetCustomAttribute<PopulateSetting>() == null || Property.GetCustomAttribute<PopulateSetting>().Skip == false)
-                {      
-                    if (Property.GetValue(A) != Property.GetValue(B) && Property.GetValue(B) != null)
+                //OH BOY HERE WE GO
+                //Check if the property is a JSON Property, if it is, let's see about updating it.
+                //If it isn't, check if we should update it.
+                if (Property.GetCustomAttribute<JsonPropertyAttribute>() != null || (Property.GetCustomAttribute<PopulateSetting>() != null && Property.GetCustomAttribute<PopulateSetting>().Skip == false))
+                {
+                    bool set = false;
+                    if (Property.GetValue(A) == null)
+                    {
+                        if (Property.GetValue(B) != null) set = true;
+                    }
+                    else
+                    {
+                        if (Property.GetValue(B) != null && !Property.GetValue(A).Equals(Property.GetValue(B))) set = true;
+                    }
+      
+                    if (set)
                     {
                         Property.SetValue(A, Property.GetValue(B));
                     }
