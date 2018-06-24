@@ -129,6 +129,14 @@ namespace Saliens
         {
             try
             {
+                if (Zone == null)
+                {
+                    throw new Exception("Null Zone");
+                }
+                if (Token == null)
+                {
+                    throw new Exception("Null Token");
+                }
                 Network.Post("ReportScore", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "score", Zone.Score).GetAwaiter().GetResult();
                 if (refresh) Update();
             }
@@ -157,6 +165,8 @@ namespace Saliens
                     player.Zone = player.Planet.GetZoneFromID(player.ActiveZoneID);
                 }
             }
+           
+            
             return player;
         }
 

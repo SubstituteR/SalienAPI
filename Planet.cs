@@ -71,7 +71,7 @@ namespace Saliens
         /// <returns>The planet information.</returns>
         public static Planet Get(int ID)
         {
-            string JSON = Network.Get("GetPlanet", Network.EndPoint.ITerritoryControlMinigameService, "id", ID.ToString()).GetAwaiter().GetResult();
+            string JSON = Network.Get("GetPlanet", Network.EndPoint.ITerritoryControlMinigameService, "id", ID.ToString(), "language", "english").GetAwaiter().GetResult();
             return Network.Deserialize<PlanetResponse>(JSON).Planets[0];
         }
 
@@ -83,7 +83,7 @@ namespace Saliens
         /// <returns>Planets that match the filter.</returns>
         public static Planet[] All(bool ActiveOnly = true)
         {
-            string JSON = Network.Get("GetPlanets", Network.EndPoint.ITerritoryControlMinigameService, "active_only", ActiveOnly.AsInt()).GetAwaiter().GetResult();
+            string JSON = Network.Get("GetPlanets", Network.EndPoint.ITerritoryControlMinigameService, "active_only", ActiveOnly.AsInt(), "language", "english").GetAwaiter().GetResult();
             return Network.Deserialize<PlanetResponse>(JSON).Planets;
         }
 

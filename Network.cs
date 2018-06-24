@@ -51,6 +51,10 @@ namespace Saliens
         {
             if (Response.StatusCode != HttpStatusCode.OK)
             {
+                if (Response.StatusCode == HttpStatusCode.InternalServerError)
+                {
+                    throw new Exception("Bad POST");
+                }
                 throw new InvalidHTTPResponse();
             }
             Int32.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value.FirstOrDefault(), out int EResult);
@@ -79,6 +83,10 @@ namespace Saliens
 
             for (int i = 0; i < data.Length; i += 2)
             {
+                if (i > 0)
+                {
+                    request_string += "&";
+                }
                 request_string += data[i].ToString() + "=" + data[i + 1].ToString();
             }
             return await ProcessRequest(await client.GetAsync(request_string));
@@ -137,8 +145,8 @@ namespace Saliens
 
             foreach (PropertyInfo Property in B.GetType().GetProperties())
             {
-                if (Property.GetCustomAttribute<PopulateSetting>() != null && Property.GetCustomAttribute<PopulateSetting>().Skip == false)
-                {
+                if (Property.GetCustomAttribute<PopulateSetting>() == null || Property.GetCustomAttribute<PopulateSetting>().Skip == false)
+                {      
                     if (Property.GetValue(A) != Property.GetValue(B) && Property.GetValue(B) != null)
                     {
                         Property.SetValue(A, Property.GetValue(B));
