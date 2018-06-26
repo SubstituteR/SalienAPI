@@ -21,6 +21,19 @@ namespace Saliens
 
     public class Network
     {
+        public enum SteamResponse
+        {
+            Unknown,
+            OK,
+            Fail,
+            InvalidState = 11,
+            AccessDenied = 15,
+            Expired = 27,
+            NoMatch = 42,
+            ValueOutOfRange = 77,
+            TimeNotSynced = 93
+        }
+
         private static HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(10)};
 
         /// <summary>
@@ -51,20 +64,27 @@ namespace Saliens
         {
             if (Response.StatusCode != HttpStatusCode.OK)
             {
-                if (Response.StatusCode == HttpStatusCode.InternalServerError)
-                {
-                    throw new Exception("Bad POST");
-                }
-                throw new InvalidHTTPResponse();
+                if (Response.StatusCode == HttpStatusCode.InternalServerError) throw new GameDownException();
+                throw new HttpRequestException("Response Code Was " + Response.StatusCode);
             }
-            Int32.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value.FirstOrDefault(), out int EResult);
-            if (EResult != 1)
+            Enum.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value.FirstOrDefault(), out SteamResponse EResult);
+            switch(EResult)
             {
-                Console.WriteLine("ERR" + EResult);
-                throw new InvalidGameResponse(EResult);
+                case SteamResponse.OK:
+                    return await Response.Content.ReadAsStringAsync();
+                case SteamResponse.InvalidState:
+                    throw new GameInvalidState();
+                case SteamResponse.AccessDenied:
+                    throw new GameAccessDenied();
+                case SteamResponse.Expired:
+                    throw new GameExpired();
+                case SteamResponse.ValueOutOfRange:
+                    throw new GameValueOutOfRange();
+                case SteamResponse.TimeNotSynced:
+                    throw new GameTimeNotSync();
+                default:
+                    throw new InvalidGameResponse(EResult);
             }
-
-            return await Response.Content.ReadAsStringAsync();
         }
 
         /// <summary>
@@ -110,7 +130,8 @@ namespace Saliens
             for (int i = 0; i < data.Length; i += 2)
             {
                 Content.Add(new KeyValuePair<string, string>(data[i].ToString(), data[i + 1].ToString()));
-            } 
+            }
+            
             return await ProcessRequest(await client.PostAsync("https://community.steam-api.com/" + endpoint + "/" + method + "/v0001", new FormUrlEncodedContent(Content)));
         }
 
@@ -123,53 +144,6 @@ namespace Saliens
         public static T Deserialize<T>(string JSON)
         {
             return JsonConvert.DeserializeObject<Response<T>>(JSON).Data;
-        }
-
-
-        [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, Inherited = false)]
-        internal class PopulateSetting : Attribute
-        {
-            public bool Skip { get; set; } = true;
-        }
-
-        /// <summary>
-        /// Copies JSON only values from B onto A.
-        /// </summary>
-        /// <param name="A">Object to copy to.</param>
-        /// <param name="B">Object to copy from.</param>
-        public static void PopulateObject(object A, object B)
-        {
-            Console.WriteLine("POPULATE CALLED");
-            if (A.GetType() != B.GetType())
-            {
-                Console.WriteLine("A != B");
-                return;
-            }
-
-            foreach (PropertyInfo Property in B.GetType().GetProperties())
-            {
-                //OH BOY HERE WE GO
-                //Check if the property is a JSON Property, if it is, let's see about updating it.
-                //If it isn't, check if we should update it.
-                if (Property.GetCustomAttribute<JsonPropertyAttribute>() != null || (Property.GetCustomAttribute<PopulateSetting>() != null && Property.GetCustomAttribute<PopulateSetting>().Skip == false))
-                {
-                    bool set = false;
-                    if (Property.GetValue(A) == null)
-                    {
-                        if (Property.GetValue(B) != null) set = true;
-                    }
-                    else
-                    {
-                        if (Property.GetValue(B) != null && !Property.GetValue(A).Equals(Property.GetValue(B))) set = true;
-                    }
-      
-                    if (set)
-                    {
-                        Property.SetValue(A, Property.GetValue(B));
-                    }
-                }
-                    
-            }
         }
     }
 }

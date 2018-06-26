@@ -82,26 +82,16 @@ namespace Saliens
         public Zone GetZoneFromPosition(int zonePosition) => Zones.Where(x => x.Position == zonePosition).FirstOrDefault();
 
 
-        
-
-        /// <summary>
-        /// Get a single planet's info
-        /// </summary>
-        /// <param name="ID">The planet's ID</param>
-        /// <returns>The planet reference.</returns>
-        public static Planet UpdatePlanet(int ID)
+        public static Planet Update(int ID)
         {
             string JSON = Network.Get("GetPlanet", Network.EndPoint.ITerritoryControlMinigameService, "id", ID.ToString(), "language", "english").GetAwaiter().GetResult();
             Planet planet = Network.Deserialize<PlanetResponse>(JSON).Planets[0];
             return _cache.AddOrUpdate(ID, planet, (key, oldvalue) => oldvalue = planet);
         }
-
-        private static Planet UpdatePlanet(Planet planet) => UpdatePlanet(planet.ID);
-
-
-        public static Planet Get(int ID) => _cache.GetOrAdd(ID, UpdatePlanet(ID));
-
-
+        public static Planet Update(Planet planet) => Update(planet.ID);
+        public static Planet Get(int ID) => _cache.GetOrAdd(ID, Update(ID));
+        public static IReadOnlyList<Planet> UpdateActive() => MultiUpdate(true);
+        public static IReadOnlyList<Planet> UpdateAll() => MultiUpdate(false); //Usually you only need to call this ONE time.
 
 
         /// <summary>
@@ -109,90 +99,70 @@ namespace Saliens
         /// </summary>
         /// <param name="ActiveOnly">Only get the planets that are currently active.</param>
         /// <returns>Planets that match the filter.</returns>
-        public static IReadOnlyList<Planet> GetPlanets(bool ActiveOnly = true)
+        private static IReadOnlyList<Planet> MultiUpdate(bool ActiveOnly = true)
         {
             string JSON = Network.Get("GetPlanets", Network.EndPoint.ITerritoryControlMinigameService, "active_only", ActiveOnly.AsInt(), "language", "english").GetAwaiter().GetResult();
             List<Planet> planets = Network.Deserialize<PlanetResponse>(JSON).Planets;
-            foreach (Planet planet in Network.Deserialize<PlanetResponse>(JSON).Planets)
+
+            if (ActiveOnly) planets.AddRange(Active.Except(planets, PlanetEqualityComparer));
+
+            foreach (Planet planet in planets)
             {
-                UpdatePlanet(planet);
+                Update(planet);
             }
+
             return planets;
         }
 
-        private static async Task<int> Setup()
-        {
-            try
-            {
-                GetPlanets(false);
-                UpdateActivePlanets();
-            }
-            catch (GameException GameDown) when (GameDown is GameDownException || (GameDown is InvalidGameResponse InvalidResponse && InvalidResponse.EResult == 0))
-            {
-                Console.WriteLine("Game Down -> Waiting for 30 seconds.");
-                await Task.Delay(60 * 1000);
-                await Setup();
-            }
-
-            return 1;
-            
-        }
-
-        
-        private static async Task<int> UpdateActivePlanets()
-        {
-            while (true)
-            {
-                try
-                {
-                    await Task.Delay(15 * 1000);
-                    IReadOnlyList<Planet> planets = GetPlanets(true);
-                    foreach (Planet planet in _cache.Values.Except(planets, PlanetEqualityComparer).Where(x => x.Info.Active && !x.Info.Captured))
-                    {
-                        UpdatePlanet(UpdatePlanet(planet));
-                    }
-                    Console.WriteLine("Active Planets Updated.");
-                }
-                catch (GameException GameDown) when (GameDown is GameDownException || (GameDown is InvalidGameResponse InvalidResponse && InvalidResponse.EResult == 0))
-                {
-                    //Game Died, Ignore Error.
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the planets in the game.
-        /// </summary>
-        /// <returns>Planets that match the filter.</returns>
-        /// <remarks>This will get all of the information, done in parallel.</remarks>
+        [JsonIgnore]
         public static IEnumerable<Planet> All => _cache.Values;
 
+        [JsonIgnore]
         public static IEnumerable<Planet> Active => _cache.Values.Where(x => x.Info.Active && !x.Info.Captured);
+
+        [JsonIgnore]
         public static IEnumerable<Planet> Captured => _cache.Values.Where(x => x.Info.Captured);
+
+        [JsonIgnore]
         public static IEnumerable<Planet> Locked => _cache.Values.Where(x => !x.Info.Active && !x.Info.Captured);
+
+
+
+        [JsonIgnore]
+        public IEnumerable<Zone> ActiveZones => Zones.Where(z => !z.Captured);
+
+        [JsonIgnore]
+        public IEnumerable<Zone> CapturedZones => Zones.Where(z => z.Captured);
 
         /// <summary>
         /// Finds the first planet with the hardest difficulty zone, then least captured.
         /// </summary>
+        [JsonIgnore]
         public static Planet FirstAvailable
         {
             get
             {
-                ZoneDifficulty difficulty = ZoneDifficulty.Hard;
+                ZoneDifficulty difficulty = ZoneDifficulty.Boss;
 
                 while (difficulty != 0)
                 {
                     foreach (Planet planet in Active.OrderBy(x => x.Info.CaptureProgress))
                     {
-                        if (planet.FilterAvailableZones(difficulty).Count() > 0)
-                        {
-                            return planet;
-                        }
+                        if (planet.FilterAvailableZones(difficulty).Count() > 0) return planet;
                     }
                     difficulty--;
                 }
                 throw new NoPlanetException();
             }
         }
+    }
+
+    public static class IEnumerablePlanetExtensions
+    {
+        public static IEnumerable<Zone> AllZones(this IEnumerable<Planet> planets) => planets.SelectMany(p => p.Zones);
+        public static IEnumerable<Zone> ActiveZones(this IEnumerable<Planet> planets) => planets.SelectMany(p => p.ActiveZones);
+        public static IEnumerable<Zone> CompletedZones(this IEnumerable<Planet> planets) => planets.SelectMany(p => p.CapturedZones);
+        public static double CompletionPercent(this IEnumerable<Planet> planets) => Math.Round(planets.Sum(x => x.Info.CaptureProgress) / planets.Count() * 100, 2);
+
     }
 }

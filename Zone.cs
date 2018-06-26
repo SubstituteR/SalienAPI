@@ -1,4 +1,6 @@
 ﻿using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Saliens
 {
@@ -7,10 +9,11 @@ namespace Saliens
     /// </summary>
     public enum ZoneDifficulty
     {
-        Unknown,
+        Invalid,
         Easy,
         Medium,
-        Hard
+        Hard,
+        Boss //TODO Confirm this
     }
 
     public class Zone
@@ -39,6 +42,7 @@ namespace Saliens
         [JsonProperty(PropertyName = "top_clans", Required = Required.DisallowNull)]
         public ClanInfo[] TopClans { get; private set; }
 
+        [JsonIgnore]
         public int Score
         {
             get
@@ -51,8 +55,9 @@ namespace Saliens
                         return 1200;
                     case ZoneDifficulty.Hard:
                         return 2400;
+                    default:
+                        return 0;
                 }
-                return 0;
             }
         }
     }

@@ -1,27 +1,36 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace Saliens
 {
     public class PlayerInfo
     {
-        [JsonProperty(PropertyName = "active_planet", Required = Required.DisallowNull)]
-        public int ActivePlanetID { get; private set; }
+        private void UpdateValues(PlayerInfo B)
+        {
+            ActivePlanetID = B.ActivePlanetID;
+            ActiveZoneID = B.ActiveZoneID;
+            ActiveZonePosition = B.ActiveZonePosition;
+            Clan = B.Clan;
+            Level = B.Level;
+            NextLevelScore = B.NextLevelScore;
+            Score = B.Score;
+            TimeOnPlanet = B.TimeOnPlanet;
+        }
+        #region JSON
 
-        [JsonProperty(PropertyName = "time_on_planet", Required = Required.DisallowNull)]
-        public int TimeOnPlanet { get; private set; }
+        [JsonProperty(PropertyName = "active_planet", Required = Required.DisallowNull)]
+        private int ActivePlanetID { get; set; }
 
         [JsonProperty(PropertyName = "active_zone_game", Required = Required.DisallowNull)]
-        public int ActiveZoneID { get; private set; }
+        private int ActiveZoneID { get; set; }
 
         [JsonProperty(PropertyName = "active_zone_position", Required = Required.DisallowNull)]
-        public int ActiveZonePosition { get; private set; }
+        private int ActiveZonePosition { get; set; }
 
         [JsonProperty(PropertyName = "clan_info", Required = Required.DisallowNull)]
-        public ClanInfo ClanInfo { get; private set; }
-    
-        [JsonProperty(PropertyName = "score", Required = Required.Always)]
-        public int Score { get; private set; }
+        public ClanInfo Clan { get; private set; }
 
         [JsonProperty(PropertyName = "level", Required = Required.Always)]
         public int Level { get; private set; }
@@ -29,133 +38,92 @@ namespace Saliens
         [JsonProperty(PropertyName = "next_level_score", Required = Required.Always)]
         public int NextLevelScore { get; private set; }
 
-        [JsonIgnore]
-        public Planet Planet => Planet.Get(ActivePlanetID);
+        [JsonProperty(PropertyName = "score", Required = Required.Always)]
+        public int Score { get; private set; }
+
+        [JsonProperty(PropertyName = "time_on_planet", Required = Required.DisallowNull)]
+        public int TimeOnPlanet { get; private set; }
+
+        #endregion
 
         [JsonIgnore]
-        public Zone Zone => Planet.Zones[ActiveZonePosition];
+        public Planet Planet
+        {
+            get
+            {
+                if (ActivePlanetID != 0)
+                {
+                    return Planet.Get(ActivePlanetID);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
+
+        [JsonIgnore]
+        public Zone Zone => Planet?.Zones.Where(x => x.GameID == ActiveZoneID).FirstOrDefault();
 
         [JsonIgnore]
         private string Token { get; set; }
 
+        [JsonConstructor]
+        private PlayerInfo() { } //Required blank constructor for deserialization.
 
-        /// <summary>
-        /// Joins the planet specified.
-        /// </summary>
-        /// <param name="PlanetID">The planet to join.</param>
-        /// <param name="refresh">Refresh player data.  If you are unsure, leave this as the default value.</param>
-        public void JoinPlanet(int PlanetID, bool refresh = true)
+        public PlayerInfo(string Token)
         {
-            LeavePlanet(false);
-            Network.Post("JoinPlanet", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "id", PlanetID).GetAwaiter().GetResult();
-            if (refresh) Update();
+            this.Token = Token;
+            GetPlayerInfo().GetAwaiter().GetResult();
+        }
+        private async Task GetPlayerInfo()
+        {
+            string JSON = await Network.Post("GetPlayerInfo", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token);
+            UpdateValues(Network.Deserialize<PlayerInfo>(JSON));
+        }
+        public async Task JoinPlanet(int PlanetID)
+        {
+            if (Planet != null) await LeavePlanet();
+            await Network.Post("JoinPlanet", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "id", PlanetID);
+            await GetPlayerInfo();
+        }
+        public async Task JoinPlanet(Planet planet) => await JoinPlanet(planet.ID);
+
+        public async Task JoinZone(int ZonePosition)
+        {
+            if (Zone != null) await LeaveZone();
+            await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
+            await GetPlayerInfo();
         }
 
-        /// <summary>
-        /// Joins the zone specified
-        /// </summary>
-        /// <param name="ZonePosition">The Position of the zone</param>
-        //// <param name="refresh">Refresh player data.  If you are unsure, leave this as the default value.</param>
-        public void JoinZone(int ZonePosition, bool refresh = true)
+        private async Task Leave(int GameID)
         {
-            Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition).GetAwaiter().GetResult();
-            if (refresh) Update();
+            await Network.Post("LeaveGame", Network.EndPoint.IMiniGameService, "access_token", Token, "gameid", GameID);
+            await GetPlayerInfo();
+        }
+        public async Task LeaveZone()
+        {
+            if (Zone != null) await Leave(ActiveZoneID);
         }
 
-        /// <summary>
-        /// Leaves your current game.
-        /// </summary>
-        /// <param name="refresh">Refresh player data.  If you are unsure, leave this as the default value.</param>
-        public void LeaveGame(bool refresh = true)
+        public async Task LeavePlanet()
         {
-            if (ActiveZoneID != 0)
+            if (Zone != null) await LeaveZone();
+            if (Planet != null) await Leave(ActivePlanetID);
+        }
+        public async Task ReportScore()
+        {
+            if (Zone != null)
             {
-                Leave(ActiveZoneID, refresh);
+                await Network.Post("ReportScore", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "score", Zone.Score);
+                await GetPlayerInfo();
             }
         }
-
-        /// <summary>
-        /// Leaves your current planet.
-        /// </summary>
-        /// <param name="refresh">Refresh player data.  If you are unsure, leave this as the default value.</param>
-        public void LeavePlanet(bool refresh = true)
+        public async Task RepresentClan(int ClanID)
         {
-            LeaveGame(false);
-            if (ActivePlanetID != 0)
-            {
-                Leave(ActivePlanetID, refresh);
-            }
-        }
-
-        /// <summary>
-        /// Forces the PlayerInfo values to be redownloaded from Steam.
-        /// </summary>
-        public void Update()
-        {
-            Network.PopulateObject(this, Get(Token));
-        }
-
-
-
-        /// <summary>
-        /// Internal function for POSTing leave messages.
-        /// </summary>
-        /// <param name="GameID">Game to leave.</param>
-        /// <param name="refresh">Decides if player data is refreshed.</param>
-        private void Leave(int GameID, bool refresh = true)
-        {
-            Network.Post("LeaveGame", Network.EndPoint.IMiniGameService, "access_token", Token, "gameid", GameID).GetAwaiter().GetResult();
-            if (refresh) Update();
-        }
-
-        /// <summary>
-        /// Changes the clan that you represent.
-        /// </summary>
-        /// <param name="ClanID">Clan to Represent</param>
-        /// <param name="refresh">Refresh player data.  If you are unsure, leave this as the default value.</param>
-        public void RepresentClan(int ClanID, bool refresh = true)
-        {
-            Network.Post("RepresentClan", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "clanid", ClanID).GetAwaiter().GetResult();
-            if (refresh) Update();
-        }
-
-        /// <summary>
-        /// Reports the score for the current zone to Steam.
-        /// </summary>
-        /// <param name="refresh">Refresh player data.  If you are unsure, leave this as the default value.</param>
-        public void ReportScore(bool refresh = true)
-        {
-            try
-            {
-                if (Zone == null)
-                {
-                    throw new Exception("Null Zone");
-                }
-                if (Token == null)
-                {
-                    throw new Exception("Null Token");
-                }
-                Network.Post("ReportScore", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "score", Zone.Score).GetAwaiter().GetResult();
-                if (refresh) Update();
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("Score Submission Failed");
-            }
-        }
-
-
-        /// <summary>
-        /// Retrieves the player data for the provided token.
-        /// </summary>
-        /// <param name="Token">Token to get player data for.</param>
-        /// <returns>A PlayerInfo object.</returns>
-        public static PlayerInfo Get(string Token)
-        {
-            string JSON = Network.Post("GetPlayerInfo", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token).GetAwaiter().GetResult();
-            PlayerInfo player = Network.Deserialize<PlayerInfo>(JSON);
-            player.Token = Token;
-            return player;
+            await Network.Post("RepresentClan", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "clanid", ClanID);
+            await GetPlayerInfo();
         }
 
     }
