@@ -44,6 +44,9 @@ namespace Saliens
         [JsonProperty(PropertyName = "time_on_planet", Required = Required.DisallowNull)]
         public int TimeOnPlanet { get; private set; }
 
+        [JsonProperty(PropertyName = "time_in_zone", Required = Required.DisallowNull)]
+        public int TimeInZone { get; private set; }
+
         #endregion
 
         [JsonIgnore]
