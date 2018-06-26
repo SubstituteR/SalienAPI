@@ -84,7 +84,11 @@ namespace Saliens
         }
         public async Task JoinPlanet(int PlanetID)
         {
-            if (Planet != null) await LeavePlanet();
+            if (Planet != null)
+            {
+                if (Planet.ID == PlanetID) return;
+                await LeavePlanet();
+            }
             await Network.Post("JoinPlanet", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "id", PlanetID);
             await GetPlayerInfo();
         }
@@ -92,7 +96,11 @@ namespace Saliens
 
         public async Task JoinZone(int ZonePosition)
         {
-            if (Zone != null) await LeaveZone();
+            if(Zone != null)
+            {
+                if (Zone.Position == ZonePosition) return;
+                await LeaveZone();
+            }
             await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
             await GetPlayerInfo();
         }

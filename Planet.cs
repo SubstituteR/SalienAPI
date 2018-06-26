@@ -94,25 +94,26 @@ namespace Saliens
         /// Finds the first planet with the hardest difficulty zone, then least captured.
         /// </summary>
         [JsonIgnore]
-        public static Planet FirstAvailable
+        public static IEnumerable<Planet> SortedPlanets
         {
             get
             {
                 ZoneType type = ZoneType.Boss;
                 ZoneDifficulty difficulty = ZoneDifficulty.Hard;
-
+                List<Planet> planets = new List<Planet>();
                 while (type != ZoneType.Invalid)
                 {
                     while (difficulty != ZoneDifficulty.Invalid)
                     {
-                        foreach (Planet planet in Active.OrderBy(x => x.Info.CaptureProgress))
+                        foreach (Planet planet in Active.Except(planets).OrderBy(x => x.Info.CaptureProgress))
                         {
-                            if (planet.FilterAvailableZones(difficulty, type).Count() > 0) return planet;
+                            if (planet.FilterAvailableZones(difficulty, type).Count() > 0) planets.Add(planet);
                         }
                         difficulty--;
                     }
                     type--;
-                } 
+                }
+                if (planets.Count() > 0) return planets;
                 throw new NoPlanetException();
             }
         }
