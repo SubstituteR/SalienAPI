@@ -64,11 +64,11 @@ namespace Saliens
         /// </summary>
         /// <param name="difficulty">Difficulty of the zones to find.  (Easy, Medium, Hard)</param>
         /// <returns>The zones that matched the filter.</returns>
-        public IEnumerable<Zone> FilterAvailableZones(ZoneDifficulty difficulty) => Zones.Where(x => x.Captured == false && x.Difficulty == difficulty);
+        public IEnumerable<Zone> FilterAvailableZones(ZoneDifficulty difficulty, ZoneType type = ZoneType.Normal) => Zones.Where(x => x.Captured == false && x.Difficulty == difficulty);
         /// <summary>
         /// Gets the first zone it can find.  Sorted by difficulty, then by capture progress.
         /// </summary>
-        public Zone FirstAvailableZone => Zones.Where(x => !x.Captured).OrderByDescending(x => x.Difficulty).ThenBy(x => x.CaptureProgress).First();
+        public Zone FirstAvailableZone => Zones.Where(x => !x.Captured).OrderByDescending(x => x.Type).ThenByDescending(x => x.Difficulty).ThenBy(x => x.CaptureProgress).First();
         /// <summary>
         /// Gets the zone that matches zoneID.
         /// </summary>
@@ -98,16 +98,21 @@ namespace Saliens
         {
             get
             {
-                ZoneDifficulty difficulty = ZoneDifficulty.Boss;
+                ZoneType type = ZoneType.Boss;
+                ZoneDifficulty difficulty = ZoneDifficulty.Hard;
 
-                while (difficulty != 0)
+                while (type != ZoneType.Invalid)
                 {
-                    foreach (Planet planet in Active.OrderBy(x => x.Info.CaptureProgress))
+                    while (difficulty != ZoneDifficulty.Invalid)
                     {
-                        if (planet.FilterAvailableZones(difficulty).Count() > 0) return planet;
+                        foreach (Planet planet in Active.OrderBy(x => x.Info.CaptureProgress))
+                        {
+                            if (planet.FilterAvailableZones(difficulty, type).Count() > 0) return planet;
+                        }
+                        difficulty--;
                     }
-                    difficulty--;
-                }
+                    type--;
+                } 
                 throw new NoPlanetException();
             }
         }

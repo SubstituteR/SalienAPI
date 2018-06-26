@@ -72,6 +72,8 @@ namespace Saliens
             {
                 case SteamResponse.OK:
                     return await Response.Content.ReadAsStringAsync();
+                case SteamResponse.Fail:
+                    throw new GameFail();
                 case SteamResponse.InvalidState:
                     throw new GameInvalidState();
                 case SteamResponse.AccessDenied:

@@ -53,7 +53,7 @@ namespace Saliens
             {
                 if (ActivePlanetID != 0)
                 {
-                    return Planet.Get(ActivePlanetID);
+                    return Planet.Get(ActivePlanetID).GetAwaiter().GetResult();
                 }
                 else
                 {
@@ -67,7 +67,7 @@ namespace Saliens
         public Zone Zone => Planet?.Zones.Where(x => x.GameID == ActiveZoneID).FirstOrDefault();
 
         [JsonIgnore]
-        private string Token { get; set; }
+        public string Token { get; private set; }
 
         [JsonConstructor]
         private PlayerInfo() { } //Required blank constructor for deserialization.

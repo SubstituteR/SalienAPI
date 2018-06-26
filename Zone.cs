@@ -13,7 +13,13 @@ namespace Saliens
         Easy,
         Medium,
         Hard,
-        Boss //TODO Confirm this
+    }
+
+    public enum ZoneType
+    {
+        Invalid = 2,
+        Normal = 3,
+        Boss = 4
     }
 
     public class Zone
@@ -25,7 +31,7 @@ namespace Saliens
         public ClanInfo Leader { get; private set; }
 
         [JsonProperty(PropertyName = "type", Required = Required.Always)]
-        public int @Type { get; private set; }
+        public ZoneType @Type { get; private set; }
 
         [JsonProperty(PropertyName = "gameid", Required = Required.DisallowNull)]
         public int GameID { get; private set; }
