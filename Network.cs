@@ -34,7 +34,7 @@ namespace Saliens
             TimeNotSynced = 93
         }
 
-        private static HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(10)};
+        private static HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 
         /// <summary>
         /// Which API Endpoint to use.
@@ -65,27 +65,61 @@ namespace Saliens
             if (Response.StatusCode != HttpStatusCode.OK)
             {
                 if (Response.StatusCode == HttpStatusCode.InternalServerError) throw new GameDownException();
-                throw new HttpRequestException("Response Code Was " + Response.StatusCode);
+                if (Response.StatusCode == (HttpStatusCode) 429)
+                {
+                    int.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value?.FirstOrDefault(), out int WaitTime);
+                    throw new RateLimitException(WaitTime);
+                }
+                    throw new HttpRequestException("Response Code Was " + Response.StatusCode);
             }
-            Enum.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value.FirstOrDefault(), out SteamResponse EResult);
-            switch(EResult)
+            Enum.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value?.FirstOrDefault(), out SteamResponse EResult);
+            string EReason = Response.Headers.Where(x => x.Key == "X-error_message").FirstOrDefault().Value?.FirstOrDefault();
+            switch (EResult)
             {
                 case SteamResponse.OK:
                     return await Response.Content.ReadAsStringAsync();
                 case SteamResponse.Fail:
-                    throw new GameFail();
+                    throw new GameFail(EReason);
                 case SteamResponse.InvalidState:
-                    throw new GameInvalidState();
+                    throw new GameInvalidState(EReason);
                 case SteamResponse.AccessDenied:
-                    throw new GameAccessDenied();
+                    throw new GameAccessDenied(EReason);
                 case SteamResponse.Expired:
-                    throw new GameExpired();
+                    throw new GameExpired(EReason);
                 case SteamResponse.ValueOutOfRange:
-                    throw new GameValueOutOfRange();
+                    throw new GameValueOutOfRange(EReason);
                 case SteamResponse.TimeNotSynced:
-                    throw new GameTimeNotSync();
+                    throw new GameTimeNotSync(EReason);
                 default:
-                    throw new InvalidGameResponse(EResult);
+                    throw new InvalidGameResponse(EResult, EReason);
+            }
+        }
+
+
+        private static async Task<string> Get(string method, EndPoint endpoint, int waittime = 0, params object[] data)
+        {
+            try
+            {
+                if (waittime > 0) await Task.Delay(waittime);
+                if (data.Length % 2 != 0)
+                {
+                    throw new Exception("Invalid Parameter Length");
+                }
+                string request_string = "https://community.steam-api.com/" + endpoint + "/" + method + "/v0001/?";
+
+                for (int i = 0; i < data.Length; i += 2)
+                {
+                    if (i > 0)
+                    {
+                        request_string += "&";
+                    }
+                    request_string += data[i].ToString() + "=" + data[i + 1].ToString();
+                }
+                return await ProcessRequest(await client.GetAsync(request_string));
+            }catch (RateLimitException ratelimit)
+            {
+                Console.WriteLine($"[GET] Got Ratelimited -> Waiting {ratelimit.WaitTime} Until Retry");
+                return await Get(method, endpoint, ratelimit.WaitTime, data);
             }
         }
 
@@ -98,21 +132,33 @@ namespace Saliens
         /// <returns>The content of the HttpResponse, or an error for invalid response.</returns>
         public static async Task<string> Get(string method, EndPoint endpoint, params object[] data)
         {
-            if (data.Length % 2 != 0)
-            {
-                throw new Exception("Invalid Parameter Length");
-            }
-            string request_string = "https://community.steam-api.com/" + endpoint + "/" + method + "/v0001/?";
+            return await Get(method, endpoint, 0, data);
+        }
 
-            for (int i = 0; i < data.Length; i += 2)
+
+        public static async Task<string> Post(string method, EndPoint endpoint, int waittime = 0, params object[] data)
+        {
+            try
             {
-                if (i > 0)
+                if (waittime > 0) await Task.Delay(waittime);
+                List<KeyValuePair<string, string>> Content = new List<KeyValuePair<string, string>> { };
+                if (data.Length % 2 != 0)
                 {
-                    request_string += "&";
+                    throw new InvalidParameterCountException();
                 }
-                request_string += data[i].ToString() + "=" + data[i + 1].ToString();
+                for (int i = 0; i < data.Length; i += 2)
+                {
+                    Content.Add(new KeyValuePair<string, string>(data[i].ToString(), data[i + 1].ToString()));
+                }
+
+                return await ProcessRequest(await client.PostAsync("https://community.steam-api.com/" + endpoint + "/" + method + "/v0001", new FormUrlEncodedContent(Content)));
             }
-            return await ProcessRequest(await client.GetAsync(request_string));
+            catch (RateLimitException ratelimit)
+            {
+                Console.WriteLine($"[POST] Got Ratelimited -> Waiting {ratelimit.WaitTime} Until Retry");
+                return await Post(method, endpoint, ratelimit.WaitTime, data);
+            }
+
         }
 
         /// <summary>
@@ -124,17 +170,7 @@ namespace Saliens
         /// <returns></returns>
         public static async Task<string> Post(string method, EndPoint endpoint, params object[] data)
         {
-            List<KeyValuePair<string, string>> Content = new List<KeyValuePair<string, string>> { };
-            if (data.Length % 2 != 0)
-            {
-                throw new InvalidParameterCountException();
-            }
-            for (int i = 0; i < data.Length; i += 2)
-            {
-                Content.Add(new KeyValuePair<string, string>(data[i].ToString(), data[i + 1].ToString()));
-            }
-            
-            return await ProcessRequest(await client.PostAsync("https://community.steam-api.com/" + endpoint + "/" + method + "/v0001", new FormUrlEncodedContent(Content)));
+            return await Post(method, endpoint, 0, data);
         }
 
         /// <summary>

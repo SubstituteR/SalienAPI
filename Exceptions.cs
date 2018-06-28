@@ -7,22 +7,31 @@ namespace Saliens
     public class NoPlanetException : GameException { }
 
     #region EResult Exceptions
-    public class GameFail : InvalidGameResponse { public GameFail() : base(Network.SteamResponse.Fail) { } }
-    public class GameInvalidState : InvalidGameResponse { public GameInvalidState() : base(Network.SteamResponse.InvalidState) { } }
-    public class GameAccessDenied : InvalidGameResponse { public GameAccessDenied() : base(Network.SteamResponse.AccessDenied){} }
-    public class GameExpired : InvalidGameResponse { public GameExpired() : base(Network.SteamResponse.Expired) { } }
-    public class GameValueOutOfRange : InvalidGameResponse { public GameValueOutOfRange() : base(Network.SteamResponse.ValueOutOfRange) { } }
-    public class GameTimeNotSync : InvalidGameResponse { public GameTimeNotSync() : base(Network.SteamResponse.TimeNotSynced) { } }
+    public class GameFail : InvalidGameResponse { public GameFail(string EReason) : base(Network.SteamResponse.Fail, EReason) { } }
+    public class GameInvalidState : InvalidGameResponse { public GameInvalidState(string EReason) : base(Network.SteamResponse.InvalidState, EReason) { } }
+    public class GameAccessDenied : InvalidGameResponse { public GameAccessDenied(string EReason) : base(Network.SteamResponse.AccessDenied, EReason) {} }
+    public class GameExpired : InvalidGameResponse { public GameExpired(string EReason) : base(Network.SteamResponse.Expired, EReason) { } }
+    public class GameValueOutOfRange : InvalidGameResponse { public GameValueOutOfRange(string EReason) : base(Network.SteamResponse.ValueOutOfRange, EReason) { } }
+    public class GameTimeNotSync : InvalidGameResponse { public GameTimeNotSync(string EReason) : base(Network.SteamResponse.TimeNotSynced, EReason) { } }
     #endregion
 
     public class InvalidParameterCountException : Exception { }
-
+    public class RateLimitException : Exception
+    {
+        public int WaitTime { get; private set; }
+        public RateLimitException(int WaitTime)
+        {
+            this.WaitTime = WaitTime;
+        }
+    }
     public class InvalidGameResponse : GameException
     {
-        public InvalidGameResponse(Network.SteamResponse EResult)
+        public InvalidGameResponse(Network.SteamResponse EResult, string EReason)
         {
             this.EResult = EResult;
+            this.EReason = EReason;
         }
         public Network.SteamResponse EResult {  get; private set; }
+        public string EReason { get; private set; }
     }
 }
