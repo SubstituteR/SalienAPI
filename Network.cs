@@ -21,16 +21,19 @@ namespace Saliens
 
     public class Network
     {
-        public enum SteamResponse
+        public enum EResult
         {
-            Unknown,
-            OK,
-            Fail,
+            Unknown = 0,
+            OK = 1,
+            Fail = 2,
+            InvalidParam = 8,
+            Busy = 10,
             InvalidState = 11,
             AccessDenied = 15,
             Expired = 27,
             NoMatch = 42,
-            ValueOutOfRange = 77,
+            ValueOutOfRange = 78,
+            UnexpectedError = 79,
             TimeNotSynced = 93
         }
 
@@ -72,23 +75,23 @@ namespace Saliens
                 }
                     throw new HttpRequestException("Response Code Was " + Response.StatusCode);
             }
-            Enum.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value?.FirstOrDefault(), out SteamResponse EResult);
+            Enum.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value?.FirstOrDefault(), out EResult EResult);
             string EReason = Response.Headers.Where(x => x.Key == "X-error_message").FirstOrDefault().Value?.FirstOrDefault();
             switch (EResult)
             {
-                case SteamResponse.OK:
+                case EResult.OK:
                     return await Response.Content.ReadAsStringAsync();
-                case SteamResponse.Fail:
+                case EResult.Fail:
                     throw new GameFail(EReason);
-                case SteamResponse.InvalidState:
+                case EResult.InvalidState:
                     throw new GameInvalidState(EReason);
-                case SteamResponse.AccessDenied:
+                case EResult.AccessDenied:
                     throw new GameAccessDenied(EReason);
-                case SteamResponse.Expired:
+                case EResult.Expired:
                     throw new GameExpired(EReason);
-                case SteamResponse.ValueOutOfRange:
+                case EResult.ValueOutOfRange:
                     throw new GameValueOutOfRange(EReason);
-                case SteamResponse.TimeNotSynced:
+                case EResult.TimeNotSynced:
                     throw new GameTimeNotSync(EReason);
                 default:
                     throw new InvalidGameResponse(EResult, EReason);
