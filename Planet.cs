@@ -68,7 +68,7 @@ namespace Saliens
         /// <summary>
         /// Gets the first zone it can find.  Sorted by difficulty, then by capture progress.
         /// </summary>
-        public Zone FirstAvailableZone => Zones.Where(x => !x.Captured).OrderByDescending(x => x.Type).ThenByDescending(x => x.Difficulty).ThenBy(x => x.CaptureProgress).First();
+        public Zone FirstAvailableZone => Zones.Where(x => !x.Captured).OrderByDescending(x => x.Type).ThenByDescending(x => x.Difficulty).ThenByDescending(x => x.CaptureProgress).First();
         /// <summary>
         /// Gets the zone that matches zoneID.
         /// </summary>
@@ -105,7 +105,7 @@ namespace Saliens
                 {
                     while (difficulty != ZoneDifficulty.Invalid)
                     {
-                        foreach (Planet planet in Active.Except(planets).OrderBy(x => x.Info.CaptureProgress))
+                        foreach (Planet planet in Active.Except(planets).OrderByDescending(x => x.Info.CaptureProgress))
                         {
                             if (planet.FilterAvailableZones(difficulty, type).Count() > 0) planets.Add(planet);
                         }
