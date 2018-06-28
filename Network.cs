@@ -65,7 +65,7 @@ namespace Saliens
             if (Response.StatusCode != HttpStatusCode.OK)
             {
                 if (Response.StatusCode == HttpStatusCode.InternalServerError) throw new GameDownException();
-                if (Response.StatusCode == (HttpStatusCode) 429)
+                if (Response.StatusCode == HttpStatusCode.ServiceUnavailable || Response.StatusCode == (HttpStatusCode) 429)
                 {
                     int.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value?.FirstOrDefault(), out int WaitTime);
                     throw new RateLimitException(WaitTime);
