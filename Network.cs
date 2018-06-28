@@ -70,7 +70,7 @@ namespace Saliens
                 if (Response.StatusCode == HttpStatusCode.InternalServerError) throw new GameDownException();
                 if (Response.StatusCode == HttpStatusCode.ServiceUnavailable || Response.StatusCode == (HttpStatusCode) 429)
                 {
-                    int.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value?.FirstOrDefault(), out int WaitTime);
+                    int.TryParse(Response.Headers.Where(x => x.Key == "Retry-After").FirstOrDefault().Value?.FirstOrDefault(), out int WaitTime);
                     throw new RateLimitException(WaitTime);
                 }
                     throw new HttpRequestException("Response Code Was " + Response.StatusCode);
@@ -89,6 +89,8 @@ namespace Saliens
                     throw new GameAccessDenied(EReason);
                 case EResult.Expired:
                     throw new GameExpired(EReason);
+                case EResult.NoMatch:
+                    throw new GameNoMatch(EReason);
                 case EResult.ValueOutOfRange:
                     throw new GameValueOutOfRange(EReason);
                 case EResult.TimeNotSynced:

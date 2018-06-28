@@ -11,6 +11,7 @@ namespace Saliens
     public class GameInvalidState : InvalidGameResponse { public GameInvalidState(string EReason) : base(Network.EResult.InvalidState, EReason) { } }
     public class GameAccessDenied : InvalidGameResponse { public GameAccessDenied(string EReason) : base(Network.EResult.AccessDenied, EReason) {} }
     public class GameExpired : InvalidGameResponse { public GameExpired(string EReason) : base(Network.EResult.Expired, EReason) { } }
+    public class GameNoMatch : InvalidGameResponse { public GameNoMatch(string EReason) : base(Network.EResult.NoMatch, EReason) { } }
     public class GameValueOutOfRange : InvalidGameResponse { public GameValueOutOfRange(string EReason) : base(Network.EResult.ValueOutOfRange, EReason) { } }
     public class GameTimeNotSync : InvalidGameResponse { public GameTimeNotSync(string EReason) : base(Network.EResult.TimeNotSynced, EReason) { } }
     #endregion

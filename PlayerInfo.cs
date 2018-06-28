@@ -7,6 +7,22 @@ namespace Saliens
 {
     public class PlayerInfo
     {
+        private static int[] XPTable = new int[]
+        {
+            0,1200,2400,4800,12000,30000,72000,180000,450000,1200000,2400000,3600000,4800000,6000000, 7200000,8400000,9600000,10800000,12000000,14400000,16800000,19200000,21600000,24000000,26400000
+        };
+        public static int XPForLevel(int level)
+        {
+            if (level >= XPTable.Length)
+            {
+                return XPTable[XPTable.Length - 1];
+            }
+            if (level <= 1)
+            {
+                return XPTable[0];
+            }
+            return XPTable[level - 1];
+        }
         private void UpdateValues(PlayerInfo B)
         {
             ActivePlanetID = B.ActivePlanetID;
