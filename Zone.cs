@@ -69,5 +69,22 @@ namespace Saliens
                 }
             }
         }
+
+        [JsonIgnore]
+        public int Tickrate
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case ZoneType.Normal:
+                        return 120 * 1000;
+                    case ZoneType.Boss:
+                        return 5 * 1000;
+                    default:
+                        return 0;
+                }
+            }
+        }
     }
 }

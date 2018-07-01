@@ -120,7 +120,17 @@ namespace Saliens
                 if (Zone.Position == ZonePosition) return;
                 await LeaveZone();
             }
-            await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
+            switch (Planet.Zones[ZonePosition].Type)
+            {
+                case ZoneType.Normal:
+                    await Network.Post("JoinBossZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
+                    break;
+                case ZoneType.Boss:
+                    await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
+                    break;
+                case ZoneType.Invalid:
+                    return;
+            }
             await GetPlayerInfo();
         }
 
