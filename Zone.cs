@@ -48,6 +48,9 @@ namespace Saliens
         [JsonProperty(PropertyName = "top_clans", Required = Required.DisallowNull)]
         public ClanInfo[] TopClans { get; private set; }
 
+        [JsonProperty(PropertyName = "boss_active", Required = Required.DisallowNull)]
+        public bool BossActive { get; private set; }
+
         [JsonIgnore]
         public int Score
         {

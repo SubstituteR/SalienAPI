@@ -5,7 +5,6 @@ using System.Net;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Reflection;
 
 namespace Saliens
 {
@@ -34,6 +33,7 @@ namespace Saliens
             NoMatch = 42,
             ValueOutOfRange = 78,
             UnexpectedError = 79,
+            RateLimited = 84,
             TimeNotSynced = 93
         }
 
@@ -71,9 +71,9 @@ namespace Saliens
                 if (Response.StatusCode == HttpStatusCode.ServiceUnavailable || Response.StatusCode == (HttpStatusCode) 429)
                 {
                     int.TryParse(Response.Headers.Where(x => x.Key == "Retry-After").FirstOrDefault().Value?.FirstOrDefault(), out int WaitTime);
-                    throw new RateLimitException(WaitTime);
+                    throw new HTTPRateLimitException(WaitTime);
                 }
-                    throw new HttpRequestException("Response Code Was " + Response.StatusCode);
+                throw new HttpRequestException("Response Code Was " + Response.StatusCode);
             }
             Enum.TryParse(Response.Headers.Where(x => x.Key == "X-eresult").FirstOrDefault().Value?.FirstOrDefault(), out EResult EResult);
             string EReason = Response.Headers.Where(x => x.Key == "X-error_message").FirstOrDefault().Value?.FirstOrDefault();
@@ -121,7 +121,7 @@ namespace Saliens
                     request_string += data[i].ToString() + "=" + data[i + 1].ToString();
                 }
                 return await ProcessRequest(await client.GetAsync(request_string));
-            }catch (RateLimitException ratelimit)
+            }catch (HTTPRateLimitException ratelimit)
             {
                 Console.WriteLine($"[GET] Got Ratelimited -> Waiting {ratelimit.WaitTime} Until Retry");
                 return await Get(method, endpoint, ratelimit.WaitTime, data);
@@ -149,7 +149,7 @@ namespace Saliens
                 List<KeyValuePair<string, string>> Content = new List<KeyValuePair<string, string>> { };
                 if (data.Length % 2 != 0)
                 {
-                    throw new InvalidParameterCountException();
+                    throw new HTTPInvalidParameterCountException();
                 }
                 for (int i = 0; i < data.Length; i += 2)
                 {
@@ -158,7 +158,7 @@ namespace Saliens
 
                 return await ProcessRequest(await client.PostAsync("https://community.steam-api.com/" + endpoint + "/" + method + "/v0001", new FormUrlEncodedContent(Content)));
             }
-            catch (RateLimitException ratelimit)
+            catch (HTTPRateLimitException ratelimit)
             {
                 Console.WriteLine($"[POST] Got Ratelimited -> Waiting {ratelimit.WaitTime} Until Retry");
                 return await Post(method, endpoint, ratelimit.WaitTime, data);
