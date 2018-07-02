@@ -64,7 +64,7 @@ namespace Saliens
         /// </summary>
         /// <param name="difficulty">Difficulty of the zones to find.  (Easy, Medium, Hard)</param>
         /// <returns>The zones that matched the filter.</returns>
-        public IEnumerable<Zone> FilterAvailableZones(ZoneDifficulty difficulty, ZoneType type = ZoneType.Normal) => Zones.Where(x => x.Captured == false && x.Difficulty == difficulty);
+        public IEnumerable<Zone> FilterAvailableZones(ZoneDifficulty difficulty, ZoneType type = ZoneType.Normal) => Zones.Where(x => !x.Captured && x.Type == type && x.Difficulty == difficulty);
         /// <summary>
         /// Gets the first zone it can find.  Sorted by difficulty, then by capture progress.
         /// </summary>

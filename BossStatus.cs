@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Saliens
 {
-    public class BossResponse
+    public class BossData
     {
         [JsonProperty(PropertyName = "boss_status", Required = Required.Always)]
         public BossStatus Status { get; private set; }

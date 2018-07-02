@@ -23,6 +23,9 @@ namespace Saliens
             }
             return XPTable[level - 1];
         }
+
+        public BossData BossData { get; private set; }
+
         private void UpdateValues(PlayerInfo B)
         {
             ActivePlanetID = B.ActivePlanetID;
@@ -123,10 +126,10 @@ namespace Saliens
             switch (Planet.Zones[ZonePosition].Type)
             {
                 case ZoneType.Normal:
-                    await Network.Post("JoinBossZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
+                    await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
                     break;
                 case ZoneType.Boss:
-                    await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
+                    await Network.Post("JoinBossZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
                     break;
                 case ZoneType.Invalid:
                     return;
@@ -151,11 +154,32 @@ namespace Saliens
         }
         public async Task ReportScore()
         {
+            await ReportScore(Zone.MaxScore);
+        }
+
+        public async Task ReportScore(int Score)
+        {
             if (Zone != null)
             {
-                await Network.Post("ReportScore", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "score", Zone.Score);
+                switch(Zone.Type)
+                {
+                    case ZoneType.Normal:
+                        await Network.Post("ReportScore", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "score", Clamp(Score, 0, Zone.MaxScore));
+                        break;
+                    case ZoneType.Boss:
+
+                        break;
+                }
+                
                 await GetPlayerInfo();
             }
+        }
+
+        public int Clamp(int A, int L, int U)
+        {
+            if (A < L) return L;
+            if (A > U) return U;
+            return A;
         }
         public async Task RepresentClan(int ClanID)
         {
