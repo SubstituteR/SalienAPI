@@ -51,7 +51,7 @@ namespace Saliens
         [JsonProperty(PropertyName = "level", Required = Required.Always)]
         public int Level { get; private set; }
 
-        [JsonProperty(PropertyName = "next_level_score", Required = Required.Always)]
+        [JsonProperty(PropertyName = "next_level_score", Required = Required.DisallowNull)]
         public int NextLevelScore { get; private set; }
 
         [JsonProperty(PropertyName = "score", Required = Required.Always)]
