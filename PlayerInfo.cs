@@ -140,6 +140,8 @@ namespace Saliens
             BossMatch.Data.Waiting = zoneResponse.Waiting;
             BossMatch.HealLastUsed = DateTimeOffset.Now.AddSeconds(120);
             Zone = zoneResponse.Zone;
+            await Task.Delay(5 * 1000);
+            await ReportBossDamage(0, 0, false);
             await GetPlayerInfo();
         }
 

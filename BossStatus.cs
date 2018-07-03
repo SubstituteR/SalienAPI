@@ -6,14 +6,14 @@ namespace Saliens
 {
     public class BossMatch
     {
-        public DateTimeOffset HealLastUsed { get; internal set; }
+        public DateTimeOffset HealLastUsed { get; set; }
         public BossData Data { get; internal set; } = new BossData { };
         public bool InBossBattle { get; internal set; }
     }
     public class BossData
     {
         [JsonProperty(PropertyName = "boss_status", Required = Required.Always)]
-        public BossStatus Status { get; private set; }
+        public BossStatus Status { get; private set; } = new BossStatus { };
 
         [JsonProperty(PropertyName = "waiting_for_players", Required = Required.Always)]
         public bool Waiting { get; internal set; } //for players
