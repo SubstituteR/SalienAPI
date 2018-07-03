@@ -37,6 +37,11 @@ namespace Saliens
             TimeNotSynced = 93
         }
 
+        static Network()
+        {
+            //ServicePointManager.DefaultConnectionLimit = 100;
+        }
+
         private static HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 
         /// <summary>
@@ -83,6 +88,8 @@ namespace Saliens
                     return await Response.Content.ReadAsStringAsync();
                 case EResult.Fail:
                     throw new GameFail(EReason);
+                case EResult.Busy:
+                    throw new GameBusy(EReason);
                 case EResult.InvalidState:
                     throw new GameInvalidState(EReason);
                 case EResult.AccessDenied:

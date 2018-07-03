@@ -22,6 +22,18 @@ namespace Saliens
         Boss = 4
     }
 
+    public class ZoneResponse
+    {
+        [JsonProperty(PropertyName = "zone_info", Required = Required.Always)]
+        public Zone Zone { get; private set; }
+
+        [JsonProperty(PropertyName = "waiting_for_players", Required = Required.DisallowNull)]
+        public bool Waiting { get; private set; }
+
+        [JsonProperty(PropertyName = "gameid", Required = Required.DisallowNull)]
+        public int GameID { get; private set; }
+    }
+
     public class Zone
     {
         [JsonProperty(PropertyName = "zone_position", Required = Required.Always)]
@@ -52,23 +64,7 @@ namespace Saliens
         public bool BossActive { get; private set; }
 
         [JsonIgnore]
-        public int Score
-        {
-            get
-            {
-                switch (Difficulty)
-                {
-                    case ZoneDifficulty.Easy:
-                        return 600;
-                    case ZoneDifficulty.Medium:
-                        return 1200;
-                    case ZoneDifficulty.Hard:
-                        return 2400;
-                    default:
-                        return 0;
-                }
-            }
-        }
+        public int MaxScore => 300 << (int)Difficulty;
 
         [JsonIgnore]
         public int Tickrate
@@ -78,7 +74,7 @@ namespace Saliens
                 switch (Type)
                 {
                     case ZoneType.Normal:
-                        return 120 * 1000;
+                        return 110 * 1000;
                     case ZoneType.Boss:
                         return 5 * 1000;
                     default:
@@ -86,5 +82,8 @@ namespace Saliens
                 }
             }
         }
+
+        [JsonIgnore]
+        public bool IsActiveBossZone => (BossActive && Type == ZoneType.Boss);
     }
 }

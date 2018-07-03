@@ -97,12 +97,12 @@ namespace Saliens
         public static IEnumerable<Planet> SortedPlanets
         {
             get
-            {
-                ZoneType type = ZoneType.Boss;
-                ZoneDifficulty difficulty = ZoneDifficulty.Hard;
+            { 
                 List<Planet> planets = new List<Planet>();
+                ZoneType type = ZoneType.Boss;
                 while (type != ZoneType.Invalid)
                 {
+                    ZoneDifficulty difficulty = ZoneDifficulty.Hard;
                     while (difficulty != ZoneDifficulty.Invalid)
                     {
                         foreach (Planet planet in Active.Except(planets).OrderByDescending(x => x.Info.CaptureProgress))

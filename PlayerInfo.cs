@@ -24,13 +24,14 @@ namespace Saliens
             return XPTable[level - 1];
         }
 
-        public BossData BossData { get; private set; }
+        public BossMatch BossMatch { get; private set; } = new BossMatch { };
 
         private void UpdateValues(PlayerInfo B)
         {
             ActivePlanetID = B.ActivePlanetID;
             ActiveZoneID = B.ActiveZoneID;
             ActiveZonePosition = B.ActiveZonePosition;
+            ActiveBossGame = B.ActiveBossGame;
             Clan = B.Clan;
             Level = B.Level;
             NextLevelScore = B.NextLevelScore;
@@ -41,6 +42,9 @@ namespace Saliens
 
         [JsonProperty(PropertyName = "active_planet", Required = Required.DisallowNull)]
         private int ActivePlanetID { get; set; }
+
+        [JsonProperty(PropertyName = "active_boss_game", Required = Required.DisallowNull)]
+        private int ActiveBossGame { get; set; }
 
         [JsonProperty(PropertyName = "active_zone_game", Required = Required.DisallowNull)]
         private int ActiveZoneID { get; set; }
@@ -84,9 +88,19 @@ namespace Saliens
             }
         }
 
-
         [JsonIgnore]
-        public Zone Zone => Planet?.Zones.Where(x => x.GameID == ActiveZoneID).FirstOrDefault();
+        public Zone Zone
+        {
+            get
+            {
+                return Planet?.Zones.Where(x => x.GameID == ActiveZoneID).FirstOrDefault();
+            }
+            private set
+            {
+                Zone zone = Planet?.Zones.Where(x => x.GameID == value.GameID).FirstOrDefault();
+                if (zone != null) zone = value;
+            }
+        }
 
         [JsonIgnore]
         public string Token { get; private set; }
@@ -116,71 +130,89 @@ namespace Saliens
         }
         public async Task JoinPlanet(Planet planet) => await JoinPlanet(planet.ID);
 
+
+        public async Task JoinBossZone(int ZonePosition)
+        {
+            if (InBossMatch && Planet.Zones[ZonePosition].IsActiveBossZone) return; //we're already in boss battle.
+            await LeaveZone();
+            ZoneResponse zoneResponse;
+            zoneResponse = Network.Deserialize<ZoneResponse>(await Network.Post("JoinBossZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition));
+            BossMatch.Data.Waiting = zoneResponse.Waiting;
+            BossMatch.HealLastUsed = DateTimeOffset.Now.AddSeconds(120);
+            Zone = zoneResponse.Zone;
+            await GetPlayerInfo();
+        }
+
         public async Task JoinZone(int ZonePosition)
         {
-            if(Zone != null)
-            {
-                if (Zone.Position == ZonePosition) return;
-                await LeaveZone();
-            }
-            switch (Planet.Zones[ZonePosition].Type)
-            {
-                case ZoneType.Normal:
-                    await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
-                    break;
-                case ZoneType.Boss:
-                    await Network.Post("JoinBossZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition);
-                    break;
-                case ZoneType.Invalid:
-                    return;
-            }
+            if (InMatch && Planet.Zones[ZonePosition].GameID == ActiveZoneID) return; //we're already in this zone.
+            await LeaveZone();
+            ZoneResponse zoneResponse;
+            zoneResponse = Network.Deserialize<ZoneResponse>(await Network.Post("JoinZone", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "zone_position", ZonePosition));
+            Zone = zoneResponse.Zone;
             await GetPlayerInfo();
         }
 
         private async Task Leave(int GameID)
         {
+            if (GameID == 0) return;
             await Network.Post("LeaveGame", Network.EndPoint.IMiniGameService, "access_token", Token, "gameid", GameID);
             await GetPlayerInfo();
         }
         public async Task LeaveZone()
         {
-            if (Zone != null) await Leave(ActiveZoneID);
+            if (InBossMatch) await Leave(ActiveBossGame);
+            if (InMatch) await Leave(ActiveZoneID);
         }
 
         public async Task LeavePlanet()
         {
-            if (Zone != null) await LeaveZone();
+            await LeaveZone();
             if (Planet != null) await Leave(ActivePlanetID);
         }
         public async Task ReportScore()
         {
-            await ReportScore(Zone.MaxScore);
+            await ReportScore(MaxMatchScore);
         }
+
+        public int MaxMatchScore => Zone?.MaxScore ?? 40;
 
         public async Task ReportScore(int Score)
         {
-            if (Zone != null)
-            {
-                switch(Zone.Type)
-                {
-                    case ZoneType.Normal:
-                        await Network.Post("ReportScore", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "score", Clamp(Score, 0, Zone.MaxScore));
-                        break;
-                    case ZoneType.Boss:
-
-                        break;
-                }
-                
-                await GetPlayerInfo();
-            }
+            await Network.Post("ReportScore", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "score", Clamp(Score, 0, MaxMatchScore));
+            await GetPlayerInfo();
         }
+
+        public async Task ReportBossDamage(int DamageTaken = 0, bool UsedHeal = false)
+        {
+            await ReportBossDamage(MaxMatchScore, DamageTaken, UsedHeal);
+        }
+
+        public async Task ReportBossDamage(int DamageToBoss, int DamageTaken = 0, bool UsedHeal = false)
+        {
+            BossMatch.Data = Network.Deserialize<BossData>(await Network.Post("ReportBossDamage", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "damage_to_boss", Clamp(Score, 0, MaxMatchScore), "damage_taken", DamageTaken, "use_heal_ability", UsedHeal.AsInt()));
+            await GetPlayerInfo();
+        }
+
+        public bool InBossMatch => ActiveBossGame > 0;
+        public bool InMatch => ActiveZoneID > 0;
 
         public int Clamp(int A, int L, int U)
         {
-            if (A < L) return L;
-            if (A > U) return U;
-            return A;
+            if (A < L) return L; if (A > U) return U; return A;
         }
+
+        [JsonIgnore]
+        public int ScoreForZone
+        {
+            get
+            {
+                if (InBossMatch) return 40;
+                if (InMatch) return Zone.MaxScore;
+                return 0;
+            }
+        }
+
         public async Task RepresentClan(int ClanID)
         {
             await Network.Post("RepresentClan", Network.EndPoint.ITerritoryControlMinigameService, "access_token", Token, "clanid", ClanID);

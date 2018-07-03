@@ -1,15 +1,22 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 namespace Saliens
 {
+    public class BossMatch
+    {
+        public DateTimeOffset HealLastUsed { get; internal set; }
+        public BossData Data { get; internal set; } = new BossData { };
+        public bool InBossBattle { get; internal set; }
+    }
     public class BossData
     {
         [JsonProperty(PropertyName = "boss_status", Required = Required.Always)]
         public BossStatus Status { get; private set; }
 
         [JsonProperty(PropertyName = "waiting_for_players", Required = Required.Always)]
-        public bool Waiting { get; private set; } //for players
+        public bool Waiting { get; internal set; } //for players
 
         [JsonProperty(PropertyName = "game_over", Required = Required.Always)]
         public bool GameOver { get; private set; }
